@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sarflood"
+version = "0.1.0"
+description = "Sentinel-1 change-detection flood mapping with rasterio, GeoPandas and NumPy/SciPy"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "geopandas",
+    "shapely>=2",
+    "rasterio",
+    "pyyaml",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+download = ["openeo", "pystac-client", "planetary-computer"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

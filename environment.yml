@@ -1,0 +1,22 @@
+name: sarflood
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - scipy
+  - pandas
+  - geopandas
+  - shapely>=2
+  - rasterio
+  - pyyaml
+  - matplotlib
+  - scikit-learn
+  - pytest
+  - jupyterlab
+  - openeo
+  - pystac-client
+  - planetary-computer
+  - pip
+  - pip:
+      - -e .

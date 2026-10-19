@@ -1,0 +1,38 @@
+# Arakawa River flood, Murakami / Sakamachi, Niigata — August 2022
+# Every tunable number in the pipeline lives here, so experiments change config, not code.
+
+name: arakawa_2022
+
+grid:
+  crs: EPSG:32654          # UTM zone 54N: metric CRS, so pixel areas and buffers are in metres
+  resolution_m: 10         # native Sentinel-1 IW GRD pixel spacing
+
+reference:
+  gsi_flood: data/reference/gsi_inundation_reference.geojson   # GSI inundation estimate (ground truth)
+  osm_water: data/reference/osm_permanent_water.geojson        # OSM river/lake polygons
+  aoi_buffer_m: 3000       # analysis extent = bounding box of GSI reference + 3 km (as in GEE)
+  eval_buffer_m: 300       # metrics computed inside GSI reference + 300 m (as in GEE)
+
+sar:
+  before: ["2022-07-22", "2022-07-23"]
+  after: ["2022-08-03", "2022-08-04"]
+  orbit_state: descending
+  relative_orbit: 46       # same orbit before/after, otherwise look geometry differs
+  polarizations: [VH, VV]
+
+detection:
+  speckle_filter: boxcar   # "boxcar" (UN-SPIDER, matches GEE focal_mean) or "lee" (edge-preserving)
+  smoothing_radius_m: 50
+  ratio_threshold: 1.15    # before/after ratio in linear power; > threshold = backscatter dropped
+                           # 1.15 = value in the final GEE script; UN-SPIDER default is 1.25
+
+masks:
+  jrc_seasonality_months: 10   # JRC water present >= 10 months/year counts as permanent water
+  hand_max_m: 15               # drop pixels more than 15 m above nearest drainage
+  hand_max_distance_m: 3000    # drainage further than this is ignored (HAND = undefined -> masked)
+  slope_max_percent: null      # null = slope mask off (tested and dropped: it hurt IoU here)
+  mmu_pixels: 20               # remove flood patches of <= 20 connected pixels (8-connectivity)
+
+paths:
+  raw: data/raw
+  outputs: outputs
