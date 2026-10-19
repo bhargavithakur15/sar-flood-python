@@ -1,35 +1,37 @@
-# SAR Flood Mapping in Python — Arakawa River, August 2022
+# SAR Flood Mapping in Python: Arakawa River, August 2022
 
 Flood extent mapping from Sentinel-1 radar for the August 2022 Arakawa River flood
-(Murakami / Sakamachi, Niigata), validated pixel-by-pixel against the GSI
+(Murakami / Sakamachi, Niigata), checked pixel by pixel against the GSI
 (Geospatial Information Authority of Japan) inundation estimate.
 
-This is a Python port of my earlier [Google Earth Engine version](#relation-to-the-gee-version).
-The science is the same; the point of this repo is the engineering: open data access,
-explicit raster alignment, tested functions, and outputs a GIS user can consume.
+A Python rewrite of my earlier Google Earth Engine workflow.
 
 ## Why radar
 
-Heavy cloud covered the flood, so optical imagery was blind. Radar sees through cloud.
-Calm floodwater reflects the radar pulse away from the satellite (specular reflection),
-so flooded land turns dark between a before and an after image.
+Heavy cloud covered the flood, so optical imagery could not see it. Radar works through
+cloud. Calm floodwater reflects the radar pulse away from the satellite, so flooded land
+appears dark in the after image compared with the before image.
 
 ## Method
 
-| Step | What | Where |
-|---|---|---|
-| 1. Data | Sentinel-1 IW GRD, VH and VV, descending relative orbit 46, sigma0 (ellipsoid), before 22 Jul / after 3 Aug 2022 | `acquire.py` (openEO, Copernicus Data Space) |
-| 2. Grid | All layers resampled onto one 10 m UTM 54N grid framed by the GSI reference + 3 km | `grid.py` (rasterio `WarpedVRT`) |
-| 3. Speckle filter | 50 m circular boxcar in linear power (UN-SPIDER), or Lee filter | `preprocess.py` (NumPy/SciPy) |
-| 4. Change detection | before / after ratio > threshold = backscatter dropped | `detect.py` |
-| 5. Permanent water | OSM water polygons ∪ JRC Global Surface Water (≥ 10 months/yr) | `masks.py`, `grid.rasterize_vector` |
-| 6. Terrain | HAND (height above nearest drainage) < 15 m, from Copernicus DEM | `masks.py` |
-| 7. Clean-up | remove patches ≤ 20 connected pixels | `masks.py` (`scipy.ndimage.label`) |
-| 8. Validation | IoU, precision, recall vs GSI inside reference + 300 m; recall by ESA WorldCover class | `evaluate.py` |
-| 9. Outputs | flood GeoTIFF, flood polygons (GeoPackage), change-ratio GeoTIFF, metrics CSV, quick-look map | `export.py` |
+1. **Data:** Sentinel-1 IW GRD, VH and VV, descending relative orbit 46, sigma0.
+   Before: 22 Jul 2022. After: 3 Aug 2022.
+2. **Common grid:** all layers resampled to one 10 m grid (UTM 54N) covering the GSI
+   reference area plus 3 km.
+3. **Speckle filter:** 50 m circular moving average, applied to linear power.
+4. **Change detection:** before/after ratio above 1.25 (the UN-SPIDER value) is flagged
+   as a backscatter drop.
+5. **Permanent water mask:** OSM water polygons and JRC Global Surface Water
+   (water at least 10 months per year).
+6. **Terrain mask:** pixels more than 15 m above the nearest drainage (HAND) are removed.
+   Elevation from Copernicus DEM.
+7. **Clean-up:** patches of 20 connected pixels or fewer are removed.
+8. **Validation:** IoU, precision and recall against GSI, within 300 m of the reference
+   area, plus recall per ESA WorldCover land-cover class.
 
-Every parameter is in [`config/arakawa_2022.yaml`](config/arakawa_2022.yaml), so an
-experiment is a config change, and each run saves the exact config it used.
+Outputs: flood mask (GeoTIFF), flood polygons (GeoPackage), change ratio (GeoTIFF),
+metrics (CSV) and a quick-look map. All parameters are in
+[`config/arakawa_2022.yaml`](config/arakawa_2022.yaml).
 
 ## Run it
 
@@ -37,77 +39,78 @@ experiment is a config change, and each run saves the exact config it used.
 conda env create -f environment.yml
 conda activate sarflood
 
-python -m sarflood download --config config/arakawa_2022.yaml   # once; cached in data/raw/
+python -m sarflood download --config config/arakawa_2022.yaml   # once, saved to data/raw/
 python -m sarflood run      --config config/arakawa_2022.yaml
-pytest                                                          # 28 tests, synthetic data, ~3 s
+pytest
 ```
 
-`download` needs a free [Copernicus Data Space](https://dataspace.copernicus.eu) account
-(browser login on first use). Ancillary layers come from Microsoft Planetary Computer
-without an account. The pipeline itself only reads local GeoTIFFs in `data/raw/`, so any
-other source with the same file names (e.g. a GEE export, in dB or linear) works too.
+The download step needs a free [Copernicus Data Space](https://dataspace.copernicus.eu)
+account. The DEM, JRC water and WorldCover layers come from Microsoft Planetary Computer
+and need no account. The pipeline reads local GeoTIFFs from `data/raw/`, so exports from
+another source (for example GEE) with the same file names also work.
 
 ## Results
 
-Pixel-wise comparison with the GSI survey (inside GSI extent + 300 m), threshold 1.25 (UN-SPIDER):
+Threshold 1.25, compared with the GSI survey within 300 m of the reference area:
 
 | | IoU | Precision | Recall | Cropland recall | Built-up recall |
 |---|---|---|---|---|---|
 | **VH** (Python) | 0.295 | 0.408 | 0.515 | 67.5 % | 5.5 % |
 | VV (Python) | 0.246 | 0.425 | 0.370 | 50.2 % | 2.4 % |
-| VH (earlier GEE run) | 0.30 | 0.41 | 0.52 | — | 5.6 % |
+| VH (earlier GEE run) | 0.30 | 0.41 | 0.52 | - | 5.6 % |
 
-The Python port reproduces the GEE result to within a few hundredths, despite a different
-DEM, HAND method and SAR source, so the result is not an artefact of one platform.
+The results are close to the GEE run, despite the differences listed below.
 
 ![VH detection vs GSI reference](docs/flood_map_VH.png)
 
-Cropland behaves like open water and is mostly detected. Built-up areas (the large red block
-around Fujisawa) are almost entirely missed: double-bounce between water and walls raises
-backscatter instead of lowering it. A full per-class table is written to `outputs/recall_by_landcover_VH.csv` on each run.
+Flooded cropland behaves like open water and is mostly detected. Flooded built-up areas
+(the large red area around Fujisawa) are mostly missed: water next to walls creates a
+double-bounce reflection that raises backscatter instead of lowering it, so a method that
+looks for darkening cannot find it.
 
-## Design decisions
+## Implementation notes
 
-- **One grid for everything.** Arrays of the same shape can still cover different
-  ground. Every input goes through `read_to_grid`, which warps it onto the analysis grid
-  with GDAL while reading, and only fetches the window needed from remote COGs.
-- **Filtering in linear power, never dB.** Speckle is multiplicative; averaging logarithms
-  is not averaging power.
-- **Ratio, not difference.** For the same reason, a ratio is the natural change measure.
-- **NaN-aware filters.** No-data and scene edges are excluded from each window's mean
-  instead of being treated as zeros, which would fake dark (flood-like) borders.
-- **HAND via nearest drainage.** `distance_transform_edt(return_indices=True)` finds the
-  nearest drainage pixel for every pixel in one vectorised pass. This is still an
-  approximation: true HAND follows flow paths over the DEM.
-- **Evaluation region.** The GSI map is a sample, not a full flood census, so metrics are
-  only computed within 300 m of it; elsewhere "no reference" does not mean "dry".
+- All layers are resampled to the same grid before any pixel comparison, so every array
+  covers exactly the same ground.
+- Speckle filtering and the change ratio use linear power rather than dB, because speckle
+  noise is multiplicative.
+- No-data pixels are ignored by the filter instead of being treated as zero, which would
+  otherwise create dark, flood-like edges.
+- HAND is approximated as elevation minus the elevation of the nearest drainage pixel.
+  A full HAND calculation would follow flow paths over the DEM.
+- Metrics are only computed near the GSI reference, because the GSI map is a sample and
+  areas outside it are not confirmed dry.
 
-## Relation to the GEE version
+## Differences from the GEE version
 
 | | GEE | Python |
 |---|---|---|
-| SAR | `COPERNICUS/S1_GRD` (sigma0, dB) | openEO `SENTINEL1_GRD` → `sar_backscatter` (sigma0, linear) |
-| HAND drainage | MERIT Hydro channels ∪ JRC | OSM ∪ JRC (MERIT not on Planetary Computer) |
-| HAND method | focal minimum within 3 km at 90 m | nearest drainage pixel, 10 m |
+| SAR | `COPERNICUS/S1_GRD` (sigma0, dB) | openEO `SENTINEL1_GRD` (sigma0, linear) |
 | DEM | SRTM 30 m | Copernicus DEM GLO-30 |
+| HAND drainage | MERIT Hydro and JRC | OSM and JRC |
+| HAND method | minimum elevation within 3 km, 90 m | nearest drainage pixel, 10 m |
 
-Numbers will therefore differ slightly from the GEE run.
+## Limitations and next steps
 
-## Known limitations
+- Built-up flooding is largely missed (see Results).
+- The Sentinel-1 pass and the GSI survey were not at the same time.
+- Next: train a random forest on the same scenes to see whether it improves built-up recall.
 
-- Built-up areas: double-bounce between water and walls raises backscatter instead of
-  lowering it, so single-polarization change detection misses urban flooding.
-- Timing: the Sentinel-1 pass is not simultaneous with the GSI survey.
-- Next step: a supervised classifier (random forest) on the same scenes to test whether
-  learned features close the built-up recall gap.
-
-## Layout
+## Project layout
 
 ```
-config/            run configuration (YAML)
-data/reference/    GSI inundation reference, OSM permanent water (GeoJSON)
-data/raw/          downloaded inputs (git-ignored)
-src/sarflood/      package: acquire, grid, preprocess, detect, masks, evaluate, export, pipeline
-tests/             pytest suite on synthetic scenes
-outputs/           results (git-ignored)
+config/            run settings
+data/reference/    GSI flood reference and OSM water polygons
+src/sarflood/      code
+tests/             tests on small synthetic scenes
+docs/              figures for this README
 ```
+
+## Data sources
+
+- Inundation reference: Geospatial Information Authority of Japan (GSI), 浸水推定図
+- Sentinel-1: Copernicus Sentinel data 2022, via Copernicus Data Space Ecosystem
+- Copernicus DEM GLO-30: © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA
+- JRC Global Surface Water: Pekel et al. (2016), European Commission Joint Research Centre
+- ESA WorldCover 2021: © ESA WorldCover project, CC BY 4.0
+- Permanent water polygons: © OpenStreetMap contributors, ODbL
