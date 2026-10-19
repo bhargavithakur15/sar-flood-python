@@ -49,13 +49,13 @@ other source with the same file names (e.g. a GEE export, in dB or linear) works
 
 ## Results
 
-Pixel-wise comparison with the GSI survey (inside GSI extent + 300 m), threshold 1.15:
+Pixel-wise comparison with the GSI survey (inside GSI extent + 300 m), threshold 1.25 (UN-SPIDER):
 
 | | IoU | Precision | Recall | Cropland recall | Built-up recall |
 |---|---|---|---|---|---|
-| **VH** (Python) | 0.296 | 0.385 | 0.562 | 72.8 % | 8.3 % |
-| VV (Python) | 0.251 | 0.409 | 0.393 | 53.0 % | 2.8 % |
-| VH (earlier GEE run) | 0.30 | 0.41 | 0.52 | 71.9 % | 7.6 % |
+| **VH** (Python) | 0.295 | 0.408 | 0.515 | 67.5 % | 5.5 % |
+| VV (Python) | 0.246 | 0.425 | 0.370 | 50.2 % | 2.4 % |
+| VH (earlier GEE run) | 0.30 | 0.41 | 0.52 | — | 5.6 % |
 
 The Python port reproduces the GEE result to within a few hundredths, despite a different
 DEM, HAND method and SAR source, so the result is not an artefact of one platform.
@@ -64,7 +64,7 @@ DEM, HAND method and SAR source, so the result is not an artefact of one platfor
 
 Cropland behaves like open water and is mostly detected. Built-up areas (the large red block
 around Fujisawa) are almost entirely missed: double-bounce between water and walls raises
-backscatter instead of lowering it. Full per-class table: `outputs/recall_by_landcover_VH.csv`.
+backscatter instead of lowering it. A full per-class table is written to `outputs/recall_by_landcover_VH.csv` on each run.
 
 ## Design decisions
 

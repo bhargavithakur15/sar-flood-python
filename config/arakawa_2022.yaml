@@ -23,8 +23,8 @@ sar:
 detection:
   speckle_filter: boxcar   # "boxcar" (UN-SPIDER, matches GEE focal_mean) or "lee" (edge-preserving)
   smoothing_radius_m: 50
-  ratio_threshold: 1.15    # before/after ratio in linear power; > threshold = backscatter dropped
-                           # 1.15 = value in the final GEE script; UN-SPIDER default is 1.25
+  ratio_threshold: 1.25    # before/after ratio in linear power; > threshold = backscatter dropped
+                           # UN-SPIDER default is 1.25
 
 masks:
   jrc_seasonality_months: 10   # JRC water present >= 10 months/year counts as permanent water
