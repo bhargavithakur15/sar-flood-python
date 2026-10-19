@@ -60,7 +60,7 @@ Pixel-wise comparison with the GSI survey (inside GSI extent + 300 m), threshold
 The Python port reproduces the GEE result to within a few hundredths, despite a different
 DEM, HAND method and SAR source, so the result is not an artefact of one platform.
 
-![VH detection vs GSI reference](docs/quicklook_VH.png)
+![VH detection vs GSI reference](docs/flood_map_VH.png)
 
 Cropland behaves like open water and is mostly detected. Built-up areas (the large red block
 around Fujisawa) are almost entirely missed: double-bounce between water and walls raises
