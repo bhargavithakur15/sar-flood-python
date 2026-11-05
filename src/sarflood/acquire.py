@@ -116,3 +116,10 @@ def download_all(cfg: dict, grid: Grid, overwrite: bool = False) -> None:
     download_ancillary(grid, out_dir, overwrite)
     print("Sentinel-1 (Copernicus Data Space, openEO):")
     download_sar(cfg, grid, out_dir, overwrite)
+    print("Optical basemap for figures (display only):")
+    from .basemap import get_basemap
+
+    try:
+        get_basemap(cfg, grid, overwrite)
+    except Exception as err:
+        print(f"  basemap skipped ({err}); `figures` will retry")

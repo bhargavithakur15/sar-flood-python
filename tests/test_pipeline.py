@@ -86,3 +86,35 @@ def test_lee_filter_tracks_flood_edge_more_tightly(project):
     cfg["detection"]["speckle_filter"] = "lee"
     lee_area = run(cfg).loc["VH", "detected_m2"]
     assert abs(lee_area - 160_000) < abs(box_area - 160_000)
+
+
+def test_config_override_does_not_touch_yaml(project):
+    path = project / "config" / "test.yaml"
+    before = path.read_text()
+    cfg = load_config(path, ["masks.slope_max_percent=5", "paths.outputs=outputs/slope5"])
+    assert cfg["masks"]["slope_max_percent"] == 5
+    assert cfg["paths"]["outputs"] == project / "outputs" / "slope5"
+    assert path.read_text() == before
+    with pytest.raises(KeyError):
+        load_config(path, ["masks.slope_max=5"])        # typo must fail loudly
+
+
+def test_figures_smoke(project):
+    """All figures render offline when a cached basemap is present."""
+    from sarflood.basemap import S2_FILE, _write_rgb
+    from sarflood.figures import make_all
+    from sarflood.grid import analysis_grid
+
+    cfg = load_config(project / "config" / "test.yaml")
+    run(cfg)
+    grid = analysis_grid(cfg["reference"]["gsi_flood"], CRS, 10, 500)
+    green = np.full(grid.shape, 900.0)
+    _write_rgb(project / "data" / "raw" / S2_FILE, [green * 0.6, green, green * 0.5], grid, "test credit")
+
+    paths = make_all(cfg)
+    names = {p.name for p in paths}
+    assert names == {"sar_before_VH.png", "sar_after_VH.png", "flood_map_VH_slide.png", "landcover_zoom.png",
+                     "slide07_accuracy_VH.png", "slide08_landcover_VH.png"}
+    from PIL import Image
+    assert Image.open(project / "outputs" / "figures" / "slide07_accuracy_VH.png").size == (1632, 1048)
+    assert all(p.stat().st_size > 10_000 for p in paths)

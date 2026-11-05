@@ -17,6 +17,7 @@ dependencies:
   - openeo
   - pystac-client
   - planetary-computer
+  - contextily            # fallback basemap for figures only
   - pip
   - pip:
       - -e .

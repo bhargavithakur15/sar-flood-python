@@ -41,8 +41,21 @@ conda activate sarflood
 
 python -m sarflood download --config config/arakawa_2022.yaml   # once, saved to data/raw/
 python -m sarflood run      --config config/arakawa_2022.yaml
+python -m sarflood figures  --config config/arakawa_2022.yaml   # slide figures in outputs/figures/
 pytest
 ```
+
+To try a setting without editing the config file, override it for one run and write the
+results to a separate folder:
+
+```bash
+python -m sarflood run --config config/arakawa_2022.yaml \
+    --set masks.slope_max_percent=5 --outputs outputs/slope5
+```
+
+The figures use a true-colour Sentinel-2 composite (June–July 2022, cloud-masked median)
+from Planetary Computer as a basemap, cached in `data/raw/`. If that download fails, they
+fall back to Esri World Imagery. The basemap is for display only.
 
 The download step needs a free [Copernicus Data Space](https://dataspace.copernicus.eu)
 account. The DEM, JRC water and WorldCover layers come from Microsoft Planetary Computer
@@ -110,6 +123,7 @@ docs/              figures for this README
 
 - Inundation reference: Geospatial Information Authority of Japan (GSI), 浸水推定図
 - Sentinel-1: Copernicus Sentinel data 2022, via Copernicus Data Space Ecosystem
+- Sentinel-2 L2A basemap (figures only): Copernicus Sentinel data 2022, via Microsoft Planetary Computer
 - Copernicus DEM GLO-30: © DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH 2014-2018, provided under COPERNICUS by the European Union and ESA
 - JRC Global Surface Water: Pekel et al. (2016), European Commission Joint Research Centre
 - ESA WorldCover 2021: © ESA WorldCover project, CC BY 4.0
